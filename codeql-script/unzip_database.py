@@ -56,6 +56,13 @@ if __name__ == '__main__':
             f.write('\n\nUnbundle ' + file_name + '\nCmd: ' + unbundle_cmd + '\n')
         print(unbundle_cmd)
         
+        if os.path.exists(out_dir + file_name.strip('.zip')):
+            with open(tmp_log, 'a') as f:
+                f.write(file_name + ' file already exists,  skip\n')
+            print('exists!')
+            fail_list.append(file)
+            continue
+        
         re = os.system(unbundle_cmd)
         if re != 0:
             fail_list.append(file)

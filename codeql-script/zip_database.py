@@ -54,6 +54,13 @@ if __name__ == '__main__':
             f.write('\n\nBundle ' + file_name + '\nCmd: ' + bundle_cmd + '\n')
         print(bundle_cmd)
         
+        if os.path.exists(out_dir + file_name + '.zip'):
+            with open(tmp_log, 'a') as f:
+                f.write(file_name + ' zip file already exists,  skip\n')
+            print('zip exists!')
+            fail_list.append(file)
+            continue
+        
         re = os.system(bundle_cmd)
         time_end = time.time()
         time_cost = time_end - time_start
