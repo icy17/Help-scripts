@@ -48,6 +48,27 @@ class ParameterConfiguration extends DataFlow::Configuration {
     }
   }
 
+//   if every path after target exists node
+BasicBlock getLeakBBAfter(ControlFlowNode target) {
+    not exists(ControlFlowNode node | 
+       node = getAfterNode()
+       and
+       target.getASuccessor*() = node
+       and not
+       exists(BasicBlock bb | 
+           not bb.getANode() = node
+           and bb = target.getASuccessor*()
+           and exists(ExitBasicBlock exit | 
+               bb.getASuccessor*() = exit)
+           and target.getASuccessor*() = bb
+           and not bb.getAPredecessor*() = node.getBasicBlock()
+           and not bb.getASuccessor*() = node.getBasicBlock()
+           and result = bb
+        )
+       )
+   
+   
+}
 
 Expr getCheckExpr(FunctionCall fc)
 {
