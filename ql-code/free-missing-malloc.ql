@@ -21,7 +21,7 @@ Expr getMallocExpr(FunctionCall fc)
         result = e
         and
         (
-            (fc.getTarget().hasName("malloc") and e = fc)
+            (fc.getTarget().hasName("malloc_with_parameter") and e = fc)
         // or
         // (fc.getTarget().hasName("new_malloc") and e = fc.getArgument(0))
         // TODO-addMallocHere
@@ -32,10 +32,10 @@ Expr getMallocExpr(FunctionCall fc)
 Expr getFreeExpr(FunctionCall fc)
 {
 
-        result = fc.getArgument(0)
+        result = fc.getArgument(Target_INDEX)
         and
         (
-            fc.getTarget().hasName("free")
+            fc.getTarget().hasName("Target_Free")
         // or
         //  fc.getTarget().hasName("new_free")
         // TODO-addFreeHere
@@ -50,7 +50,7 @@ Expr getFreeExpr(FunctionCall fc)
 
  predicate isSinkFC(FunctionCall fc)
  {
- fc.getTarget().hasName("free")
+ fc.getTarget().hasName("Target_Free")
 //  or
 //  fc.getTarget().hasName("new_free")
  }

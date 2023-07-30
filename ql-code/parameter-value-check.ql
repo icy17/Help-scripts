@@ -15,15 +15,18 @@ import semmle.code.cpp.security.Security
 import semmle.code.cpp.controlflow.Guards
 import semmle.code.cpp.valuenumbering.GlobalValueNumbering
 
+string target_api = "SSL_CTX_set_options"
+int target_index = 0
     
 Expr getSinkExpr(FunctionCall fc)
 {
-result = fc.getArgument(0) 
+result = fc.getArgument(target_index) 
 }
 
 predicate isSinkFC(FunctionCall fc)
 {
-fc.getTarget().hasName("SSL_CTX_set_options")
+
+fc.getTarget().hasName(target_api)
 }
 DataFlow::Node getSinkNode(FunctionCall fc)
 {
@@ -48,27 +51,9 @@ class ParameterConfiguration extends DataFlow::Configuration {
     }
   }
 
+
+
 //   if every path after target exists node
-BasicBlock getLeakBBAfter(ControlFlowNode target) {
-    not exists(ControlFlowNode node | 
-       node = getAfterNode()
-       and
-       target.getASuccessor*() = node
-       and not
-       exists(BasicBlock bb | 
-           not bb.getANode() = node
-           and bb = target.getASuccessor*()
-           and exists(ExitBasicBlock exit | 
-               bb.getASuccessor*() = exit)
-           and target.getASuccessor*() = bb
-           and not bb.getAPredecessor*() = node.getBasicBlock()
-           and not bb.getASuccessor*() = node.getBasicBlock()
-           and result = bb
-        )
-       )
-   
-   
-}
 
 Expr getCheckExpr(FunctionCall fc)
 {

@@ -81,6 +81,108 @@ def if_big(database_path):
     else:
         return False
 
+# ql_code: orig parameter-value-check.ql
+# target_api: api used
+# target_index: api parameter index.
+def gen_parameter_check_ql(ql_code, target_api, target_index)
+{
+    target_api_str = 'fc.getTarget().hasName("' + target_api + '")'
+    target_index_str = 'result = fc.getArgument(' + str(target_index) + ')'
+    ql_code = ql_code.replace('fc.getTarget().hasName("SSL_CTX_set_options")', target_api_str)
+    ql_code = ql_code.replace('result = fc.getArgument(0) ', target_index_str)
+    return ql_code
+}
+
+def gen_missing_free_ql(ql_code, target_api, target_index, free_list)
+{
+    ql_code = ql_code.replace('Target_Malloc', target_api)
+    ql_code = ql_code.replace('Target_INDEX', target_index)
+    free_str = 'fc.getTarget().hasName("free")'
+    for free_api in free_list:
+        free_str = free_str + '\nor fc.getTarget().hasName("' + free_api + '")'
+
+    ql_code = ql_code.replace('fc.getTarget().hasName("free")', free_str)
+    return ql_code
+}   
+
+def gen_missing_malloc_ql(ql_code, target_api, target_index, malloc_dict_list)
+{
+    ql_code = ql_code.replace('Target_Free', target_api)
+    ql_code = ql_code.replace('Target_INDEX', target_index)
+    malloc_str = '(fc.getTarget().hasName("malloc_with_parameter") and e = fc)'
+    malloc_str2 = 'fc.getTarget().hasName("malloc")'
+    for malloc_item in malloc_dict_list:
+        malloc_api = malloc_item['api']
+        malloc_index = malloc_item['index']
+        
+        malloc_str = malloc_str + '\n or (fc.getTarget().hasName("' + malloc_api + '") and e = fc.getArgument(' + str(malloc_index) + '))'
+        malloc_str2 = malloc_str2 + '\n or fc.getTarget().hasName("' + malloc_api + '")'
+    ql_code = ql_code.replace('(fc.getTarget().hasName("malloc_with_parameter") and e = fc)', malloc_str)
+    ql_code = ql_code.replace('fc.getTarget().hasName("malloc")', malloc_str2)
+    ql_code = ql_code.replace('malloc_with_parameter', 'malloc')
+    return ql_code
+}
+
+def gen_double_free_ql(ql_code, target_api, target_index, malloc_dict_list)
+{
+    ql_code = ql_code.replace('Target_Free', target_api)
+    ql_code = ql_code.replace('Target_INDEX', target_index)
+    malloc_str = '(fc.getTarget().hasName("malloc_with_parameter") and e = fc)'
+    malloc_str2 = 'fc.getTarget().hasName("malloc")'
+    for malloc_item in malloc_dict_list:
+        malloc_api = malloc_item['api']
+        malloc_index = malloc_item['index']
+        
+        malloc_str = malloc_str + '\n or (fc.getTarget().hasName("' + malloc_api + '") and e = fc.getArgument(' + str(malloc_index) + '))'
+        malloc_str2 = malloc_str2 + '\n or fc.getTarget().hasName("' + malloc_api + '")'
+    ql_code = ql_code.replace('(fc.getTarget().hasName("malloc_with_parameter") and e = fc)', malloc_str)
+    ql_code = ql_code.replace('fc.getTarget().hasName("malloc")', malloc_str2)
+    ql_code = ql_code.replace('malloc_with_parameter', 'malloc')
+    return ql_code
+}
+
+def gen_uaf_ql(ql_code, target_api, target_index, malloc_dict_list, free_list)
+{
+    ql_code = ql_code.replace('Target_API', target_api)
+    ql_code = ql_code.replace('Target_INDEX', target_index)
+    malloc_str = '(fc.getTarget().hasName("malloc_with_parameter") and e = fc)'
+    malloc_str2 = 'fc.getTarget().hasName("malloc")'
+    for malloc_item in malloc_dict_list:
+        malloc_api = malloc_item['api']
+        malloc_index = malloc_item['index']
+        
+        malloc_str = malloc_str + '\n or (fc.getTarget().hasName("' + malloc_api + '") and e = fc.getArgument(' + str(malloc_index) + '))'
+        malloc_str2 = malloc_str2 + '\n or fc.getTarget().hasName("' + malloc_api + '")'
+    ql_code = ql_code.replace('(fc.getTarget().hasName("malloc_with_parameter") and e = fc)', malloc_str)
+    ql_code = ql_code.replace('fc.getTarget().hasName("malloc")', malloc_str2)
+    ql_code = ql_code.replace('malloc_with_parameter', 'malloc')
+    
+    free_str = 'fc.getTarget().hasName("free")'
+    for free_api in free_list:
+        free_str = free_str + '\n or fc.getTarget().hasName("' + free_api + '")'
+    ql_code = ql_code.replace('fc.getTarget().hasName("free")', free_str)
+    return ql_code
+    
+}
+
+def gen_uninitialize_ql(ql_code, target_api, target_index, initialize_dict_list)
+{
+    ql_code = ql_code.replace('Target_API', target_api)
+    ql_code = ql_code.replace('Target_INDEX', target_index)
+    malloc_str = '(fc.getTarget().hasName("initialize_expr") and e = fc.getArgument(0))'
+    malloc_str2 = 'fc.getTarget().hasName("initialize")'
+    for malloc_item in initialize_dict_list:
+        malloc_api = malloc_item['api']
+        malloc_index = malloc_item['index']
+        
+        malloc_str = malloc_str + '\n or (fc.getTarget().hasName("' + malloc_api + '") and e = fc.getArgument(' + str(malloc_index) + '))'
+        malloc_str2 = malloc_str2 + '\n or fc.getTarget().hasName("' + malloc_api + '")'
+    ql_code = ql_code.replace('(fc.getTarget().hasName("initialize_expr") and e = fc.getArgument(0))', malloc_str)
+    ql_code = ql_code.replace('fc.getTarget().hasName("initialize")', malloc_str2)
+    return ql_code
+
+}
+
 def gen_ql_code(ql_dir, big_flag, database):
     ql_path = ql_dir + '/'
     ql_name = database['malloc_api'] + '-' + database['free_api'] + '.ql'
@@ -209,6 +311,8 @@ def sort_by_size(database_list, database_dir):
         print(item['repo'] + ' size: ' + str(item['size']))
     # exit(1)
     return out_list
+
+
 
 if __name__ == '__main__':
     # in_list = 'list'

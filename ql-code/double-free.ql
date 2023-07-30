@@ -21,9 +21,7 @@ Expr getMallocExpr(FunctionCall fc)
         result = e
         and
         (
-            (fc.getTarget().hasName("malloc") and e = fc)
-        or
-        (fc.getTarget().hasName("initialize_api") and e = fc.getArgument(0))
+            (fc.getTarget().hasName("malloc_with_parameter") and e = fc)
         // TODO-addMallocHere
         )
     )
@@ -32,27 +30,26 @@ Expr getMallocExpr(FunctionCall fc)
 Expr getFreeExpr(FunctionCall fc)
 {
 
-        result = fc.getArgument(0)
+        result = fc.getArgument(Target_INDEX)
         and
         (
-            fc.getTarget().hasName("free")
-        or
-         fc.getTarget().hasName("target")
+            fc.getTarget().hasName("Target_Free")
+        // or
+        //  fc.getTarget().hasName("target")
         // TODO-addFreeHere
         )
 }
  predicate isSourceFC(FunctionCall fc)
  {
- fc.getTarget().hasName("initialize_api")
- or 
+
  fc.getTarget().hasName("malloc")
  }
 
  predicate isSinkFC(FunctionCall fc)
  {
- fc.getTarget().hasName("free")
- or
- fc.getTarget().hasName("target")
+ fc.getTarget().hasName("Target_Free")
+//  or
+//  fc.getTarget().hasName("target")
  }
  DataFlow::Node getSinkNode(FunctionCall fc)
  {

@@ -22,9 +22,9 @@
          result = e
          and
          (
-             (fc.getTarget().hasName("strlen") and e = fc.getArgument(0))
-         or
-         (fc.getTarget().hasName("test_init") and e = fc.getArgument(0))
+             (fc.getTarget().hasName("initialize_expr") and e = fc.getArgument(0))
+        //  or
+        //  (fc.getTarget().hasName("test_init") and e = fc.getArgument(0))
          // TODO-addMallocHere
          )
      )
@@ -32,9 +32,9 @@
 
  predicate isSourceFC(FunctionCall fc)
  {
- fc.getTarget().hasName("test_init")
- or 
- fc.getTarget().hasName("strlen")
+ fc.getTarget().hasName("initialize")
+//  or 
+//  fc.getTarget().hasName("strlen")
  }
 
  DataFlow::Node getSourceNode(FunctionCall fc)
@@ -46,12 +46,14 @@
 
  Expr getSinkExpr(FunctionCall fc)
  {
- result = fc.getArgument(0) 
+    isSinkFC(fc)
+    and
+ result = fc.getArgument(Target_INDEX) 
  }
  
  predicate isSinkFC(FunctionCall fc)
  {
- fc.getTarget().hasName("target")
+ fc.getTarget().hasName("Target_API")
  }
  DataFlow::Node getSinkNode(FunctionCall fc)
  {
