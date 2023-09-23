@@ -1,10 +1,10 @@
 /**
- * @name squid
+ * @name mallocfree
  * @description description
  * @kind problem
  * @problem.severity error
  * @precision high
- * @id cpp/squid
+ * @id cpp/memleak
  * @tags security
  */
 

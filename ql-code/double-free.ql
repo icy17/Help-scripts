@@ -1,10 +1,10 @@
 /**
- * @name squid
+ * @name doublefree
  * @description description
  * @kind problem
  * @problem.severity error
  * @precision high
- * @id cpp/squid
+ * @id cpp/doublefree
  * @tags security
  */
 

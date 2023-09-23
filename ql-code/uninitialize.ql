@@ -1,10 +1,10 @@
 /**
- * @name squid
+ * @name uninitialize
  * @description description
  * @kind problem
  * @problem.severity error
  * @precision high
- * @id cpp/squid
+ * @id cpp/uninitialize
  * @tags security
  */
 
@@ -22,7 +22,7 @@
          result = e
          and
          (
-             (fc.getTarget().hasName("initialize_expr") and e = fc.getArgument(0))
+             (fc.getTarget().hasName("initialize_expr") and e = fc.getAnArgument())
         //  or
         //  (fc.getTarget().hasName("test_init") and e = fc.getArgument(0))
          // TODO-addMallocHere
@@ -185,5 +185,5 @@ BasicBlock getLeakBBBefore(ControlFlowNode target) {
 //  and after.getTarget().hasName("free")
  // and not exists(Expr check| check=getCheckExpr(target))
  and bb = getLeakBBBefore(target)
- select target
+ select target, target.getLocation().toString()
  
