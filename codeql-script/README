@@ -1,0 +1,30 @@
+这个文件夹下的所有代码用于自动化CodeQL检测中的某些步骤
+
+    auto_detect.py: 自动化根据已有的规则文件和ql_template对database文件夹下的所有database进行检测， 结果放到output_dir
+        Usage: python3 ./auto_detect.py <in_dir> <output_dir> <database_dir>
+        in_dir should contain: 
+            searchres, free_API, malloc_API, initialize_API, api_rule and ql_template/xxx.ql
+    auto_find.py: 自动化在repo_list_path包含的所有repo中使用find命令确定该repo是否使用了api_dir中描述的API，结果放到out_dir
+        Usage:python3 ./auto_find.py <api_dir> <out_dir> <repo_list_path>
+        api_dir是放api-list的dir，每个lib的list以lib名命名
+        out_dir：会生成findres在这个dir，这个dir里放着repo的源码，每个repo dir名与repo_list的相同，需要人工产生
+            ; 目录下还有repo-list文件夹，放着每个库的repo name
+        repo_list_path: 存放repo list的文件目录
+        example：python3 ./auto_find.py /home/jhliu/Data/enrich-apilist/ /home/jhliu/softwares/openssl/ /home/jhliu/softwares/openssl/all-repos
+    check_compile.py: 使用CodeQL的引擎搜索目标API是否在目标repo中被调用
+        Usage: python3 ./check_compile.py <database-dir> <findres_path> <out_path>
+        Example: python3 ./check_compile.py ~/database/all-database/ ~/database-source/findres-allapi ~/database-source/search_ql
+        这里findres_path一般是auto_find脚本的结果
+    skip_old_findres.py: 将新旧两个findres合并为一个，去除中间的重复
+        修改代码中的new_all_findres, old_findres和out_findres
+    unzip_database.py: unzip all the databases and their source code in <in_dir> and put database in <out_dir>, source code in <out_dir/source_code> dir
+        Usage: python3 ./unzip_database.py <in_dir> <out_dir>
+        Example: python3 ./unzip_database.py /home/jhliu/databases-zip/ /home/jhliu/database-all/
+        in_dir放的是database.zip
+    zip_database.py: bundle all the databases in <in_dir> and output the .zip file of database in <out_dir>.
+        Usage: python3 ./zip_database.py <in_dir> <out_dir>
+        Example: python3 ./zip_database.py /home/jhliu/databases/ /home/jhliu/database-zip
+    auto_delete.py: 自动删除结果文件夹中为空的csv文件
+        Usage: python3 ./auto-delete.py <res_dir>
+    combine_csv.py: 合并结果文件中的所有结果到一个csv文件
+        Usage: python3 ./combine_csv.py <res_dir>

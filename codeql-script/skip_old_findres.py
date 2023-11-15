@@ -13,7 +13,7 @@ def read_json(in_path):
 
 if __name__ == '__main__':
     new_all_findres = '/home/jhliu/data/Detect-data/findres-new'
-    old findres = '/home/jhliu/data/Detect-data/findres'
+    old_findres = '/home/jhliu/data/Detect-data/findres'
     out_findres = '/home/jhliu/data/Detect-data/findres-combine'
 
     old_json = read_json(old_findres)

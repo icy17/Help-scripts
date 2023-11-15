@@ -29,7 +29,7 @@ if __name__ == '__main__':
     database_dir = sys.argv[1] + '/'
     out_dir = sys.argv[2] + '/'
     out_code_dir = out_dir + '/source_code/'
-    home_dir = '/home/jhliu'
+    home_dir = '/root/'
     tmp_log = home_dir + '/tmp_unzip_log'
     
     files = get_all_file_path(database_dir)

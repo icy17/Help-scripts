@@ -28,7 +28,7 @@ if __name__ == '__main__':
         exit(1)
     database_dir = sys.argv[1] + '/'
     out_dir = sys.argv[2] + '/'
-    home_dir = '/home/jhliu'
+    home_dir = '/root/'
     tmp_log = home_dir + '/tmp_bundle_log'
     
     files = get_all_file_path(database_dir)
