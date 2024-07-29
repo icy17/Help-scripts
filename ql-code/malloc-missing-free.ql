@@ -36,9 +36,6 @@ Expr getFreeExpr(FunctionCall fc)
         and
         (
             fc.getTarget().hasName("free")
-        // or
-        //  fc.getTarget().hasName("new_free")
-        // TODO-addFreeHere
         )
 }
 
@@ -51,27 +48,27 @@ Expr getFreeExpr(FunctionCall fc)
 //  {
 //  result = fc.getArgument(0) 
 //  }
- predicate isSourceFC(FunctionCall fc)
+ predicate isMallocFC(FunctionCall fc)
  {
 //  fc.getTarget().hasName("new_malloc")
 //  or 
  fc.getTarget().hasName("Target_Malloc")
  }
 
- predicate isSinkFC(FunctionCall fc)
+ predicate isFreeFC(FunctionCall fc)
  {
  fc.getTarget().hasName("free")
 //  or
 //  fc.getTarget().hasName("new_free")
  }
- DataFlow::Node getSinkNode(FunctionCall fc)
+ DataFlow::Node getFreeNode(FunctionCall fc)
  {
      result.asExpr() = getFreeExpr(fc)
      or
      result.asDefiningArgument() = getFreeExpr(fc)
  }
     
- DataFlow::Node getSourceNode(FunctionCall fc)
+ DataFlow::Node getMallocNode(FunctionCall fc)
  {
      result.asExpr() = getMallocExpr(fc)
      or
@@ -82,96 +79,141 @@ Expr getFreeExpr(FunctionCall fc)
    
      override predicate isSource(DataFlow::Node source) {
        exists(FunctionCall fc | 
-        isSourceFC(fc)
+        isMallocFC(fc)
         and
-        source = getSourceNode(fc)
+        source = getMallocNode(fc)
          )
      }
      override predicate isSink(DataFlow::Node sink) {
        // sink.asExpr()
        exists(FunctionCall fc |
-         isSinkFC(fc)
-         and sink = getSinkNode(fc)
+         isFreeFC(fc)
+         and sink = getFreeNode(fc)
        )
      }
    }
 
-ControlFlowNode getTargetNode() {
-    exists(FunctionCall target | 
-    isSourceFC(target)
-    and result = target
-    )
-}
-   
-ControlFlowNode getAfterNode(ControlFlowNode target) {
-    isSourceFC(target)
-    and
-    exists(FunctionCall fc | 
-        target.getASuccessor*() = fc
-        and result = fc
-        and isSinkFC(fc)
-        and exists(MallocConfiguration cfg| 
-            cfg.hasFlow(getSourceNode(target), getSinkNode(fc))
-            )
-        )
+FunctionCall getTargetFree(FunctionCall malloc) {
+    isMallocFC(malloc)
+    and isFreeFC(result)
+    // and malloc.getASuccessor+() = result
+    and exists(MallocConfiguration p | p.hasFlow(getMallocNode(malloc), getFreeNode(result)))
 }
 
-
-// return True说明该node是 conditional的，会leak
-predicate isConditionalAfter(ControlFlowNode node, ControlFlowNode target) {
-    target = getTargetNode()
-    and
-    node = getAfterNode(target)
-    and
-    exists(BasicBlock bb | 
-        bb.getAPredecessor().getANode() = node
-        and bb.getAPredecessor().getANode() = target
+predicate isSpecialCondition(FunctionCall malloc, IfStmt ifstmt) {
+    isMallocFC(malloc)
+    and not ifstmt.getCondition().getAChild*() = malloc
+    and exists(Variable v | 
+        ifstmt.getCondition().getAChild*() = v.getAnAccess()
+        and getMallocExpr(malloc).getAChild*() = v.getAnAccess()
+        
         )
+        
 }
 
- //   if every path after target exists node
-BasicBlock getLeakBBAfter(ControlFlowNode target) {
-     not exists(ControlFlowNode node | 
-        node = getAfterNode(target)
-        and (not
-        exists(BasicBlock bb | 
-            not bb.getANode() = node
-            and bb = target.getASuccessor*()
-            and exists(ExitBasicBlock exit | 
-                bb.getASuccessor*() = exit)
-            and target.getASuccessor*() = bb
-            and not bb.getAPredecessor*() = node.getBasicBlock()
-            and not bb.getASuccessor*() = node.getBasicBlock()
-            and result = bb
-         )
-         and not isConditionalAfter(node, target)
+class ExitFunction extends Function {
+    ExitFunction() {
+
+      exists(FunctionCall exit |
+        exit.getEnclosingFunction() = this
+        and 
+        (
+            exit.getTarget() instanceof ExitFunction
+            or exit.getTarget().hasName("exit")
+            or exit.getTarget().hasName("abort")
         )
-     )
+        // and forall(BasicBlock bb | bb.getEnclosingFunction() = this | bb.getASuccessor*() = exit or bb.getANode() = exit)
+      )
+      and
+      (
+        this.getAnAttribute().hasName(["noreturn", "__noreturn__"])
+        or
+        this.getASpecifier().hasName("noreturn")
+        or
+        this.hasGlobalOrStdName([
+            "exit", "_exit", "_Exit", "abort", "__assert_fail", "longjmp", "__builtin_unreachable"
+        ])
+      )
+    //   and 
+    //   exists(ReturnStmt rt | 
+    //     rt.getEnclosingFunction() = this
+    //     )
+    //     and this.hasName("exit_tcpdump")
+    }
+  }
+
+  ReturnStmt hasBB(ExitFunction exit) {
+    result.getEnclosingFunction() = exit
     
+}
+
+ BasicBlock getLeakAfterBB(FunctionCall malloc) {
+    isMallocFC(malloc)
+    and
+    exists(IfStmt ifStmt | 
+        result = ifStmt.getThen().getAChild*()
+        and not isSpecialCondition(malloc, ifStmt)
+        and not exists(Stmt elseStmt | elseStmt = ifStmt.getElse())
+        and not exists(FunctionCall free | free = getTargetFree(malloc) and not (free.getASuccessor+() = malloc and malloc.getASuccessor+() = free )and (free = result.getANode() or free.getASuccessor+() = result))
+        and (malloc.getASuccessor*() = result)
+        and (exists(ReturnStmt rt | result.getANode() = rt) or exists(FunctionCall fc | fc.getTarget() instanceof ExitFunction and result.getANode() = fc) or exists(GotoStmt goto | result.getANode() = goto and not result.getASuccessor+() = getTargetFree(malloc)))
+          )
+    // malloc.getASuccessor+() = result
+    // and not exists(FunctionCall free | 
+    //     isFreeFC(free)
+    //     and result.getASuccessor+() = free
+    //     and free.getASuccessor+() = result
+        
+    //     )
+    // and exists(ReturnStmt rt | 
+    //     result.getASuccessor+() = rt
+        
+    //     )
  }
  
- 
+//  Stmt testgetLeakAfterBB(FunctionCall malloc) {
+//     isMallocFC(malloc)
+//     and
+//     exists(IfStmt ifStmt | 
+//         result = ifStmt.getThen().getChildStmt()
+//         and not isSpecialCondition(malloc, ifStmt)
+//         and not exists(Stmt elseStmt | elseStmt = ifStmt.getElse())
+//         // and not exists(FunctionCall free | free = getTargetFree(malloc) and not (free.getASuccessor+() = malloc and malloc.getASuccessor+() = free )and (free = result.getANode() or free.getASuccessor+() = result))
+//         and (malloc.getASuccessor*() = result)
+//         and (exists(ReturnStmt rt | result = rt))
+//           )
+//     // malloc.getASuccessor+() = result
+//     // and not exists(FunctionCall free | 
+//     //     isFreeFC(free)
+//     //     and result.getASuccessor+() = free
+//     //     and free.getASuccessor+() = result
+        
+//     //     )
+//     // and exists(ReturnStmt rt | 
+//     //     result.getASuccessor+() = rt
+        
+//     //     )
+//  }
+
  predicate isLocalVariable(Expr e) {
-     exists(LocalVariable lv | 
-        exists(FunctionCall fc| 
-            fc = e and
-            exists(AssignExpr ae | 
-            ae.getAChild() = fc and lv.getAnAccess() = ae.getLValue())
-        )
-            or
-            lv.getAnAccess() = e
-            )
+    exists(LocalVariable a| 
+    a.getAnAccess() = e.getAChild*()
+    and not exists(ReturnStmt rt | 
+        rt.getAChild*() = a.getAnAccess())
+    )
  }
 
- 
- from FunctionCall target, BasicBlock bb
+ //0702-after check FN
+ from FunctionCall target
  where
- target = getTargetNode()
+ isMallocFC(target)
  and 
 isLocalVariable(getMallocExpr(target))
- 
-//  and after.getTarget().hasName("free")
- // and not exists(Expr check| check=getCheckExpr(target))
- and bb = getLeakBBAfter(target)
+
+ and 
+ (
+    exists(BasicBlock bb | bb = getLeakAfterBB(target) )
+    or
+    not exists(FunctionCall free| free = getTargetFree(target))
+ )
  select target, target.getLocation().toString()
- 

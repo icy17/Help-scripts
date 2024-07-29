@@ -12,9 +12,9 @@ def read_json(in_path):
     return out_list
 
 if __name__ == '__main__':
-    new_all_findres = '/home/jhliu/data/Detect-data/findres-new'
-    old_findres = '/home/jhliu/data/Detect-data/findres'
-    out_findres = '/home/jhliu/data/Detect-data/findres-combine'
+    new_all_findres = '/root/output/detect-702-all/searchres'
+    old_findres = '//root/output/detect-major-must-hit/searchres'
+    out_findres = '//root/output/detect-702-all/searchres-filter'
 
     old_json = read_json(old_findres)
     new_json = read_json(new_all_findres)

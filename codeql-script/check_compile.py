@@ -124,7 +124,7 @@ if __name__ == '__main__':
         exit(1)
     database_dir = sys.argv[1] + '/'
     findres_path = sys.argv[2]
-    home_dir = '/home/jhliu/'
+    home_dir = '/root/'
 
     out_dir = sys.argv[3] + '/'
     ql_dir = home_dir + '/CodeQL/vscode-codeql-starter/codeql-custom-queries-cpp/'

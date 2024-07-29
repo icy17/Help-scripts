@@ -119,7 +119,7 @@ if __name__ == '__main__':
     log_json = out_dir + '/API-info'
     # 存放一个file里的所有API
     file_api_json = out_dir + '/file-API'
-    api_path = out_dir + '/' + repo_name + '-apilist'
+    api_path = out_dir + '/' + repo_name + '-noapilist'
     standard_API = get_standart_list()
     
     
@@ -157,27 +157,29 @@ if __name__ == '__main__':
     file_api_list = list()
     print('wait for match...')
     for func in fc_list:
-        if func in def_func_list:
+        if func in def_func_list or func in standard_API:
             # 该函数是用户自定义
+            with open(api_path, 'a') as f:
+                f.write(func + '\n')
             continue
-        else:
-            # 判断该函数是否是标准库函数
-            if func in standard_API:
-                continue
-            else:
-                # 该func很可能是API，保存下来{func, repo, declaration}, 另保存一个API-list，只有APIname
-                # new_dict = dict()
-                # new_dict['func'] = func
-                # new_dict['repo']= in_dir.split('/')[-1]
-                # new_dict['declaration'] = declaration
-                file_api_list.append(func)
-                # with open(log_json, 'a') as f:
-                #     f.write(json.dumps(new_dict))
-                #     f.write('\n')
-                # with open(api_path, 'a') as f:
-                #     f.write(func + '\n')
-    file_api_list = list(set(file_api_list))
-    for api in file_api_list:
-        with open(api_path, 'a') as f:
-            f.write(api + '\n')
+    #     else:
+    #         # 判断该函数是否是标准库函数
+    #         if func in standard_API:
+    #             continue
+    #         else:
+    #             # 该func很可能是API，保存下来{func, repo, declaration}, 另保存一个API-list，只有APIname
+    #             # new_dict = dict()
+    #             # new_dict['func'] = func
+    #             # new_dict['repo']= in_dir.split('/')[-1]
+    #             # new_dict['declaration'] = declaration
+    #             file_api_list.append(func)
+    #             # with open(log_json, 'a') as f:
+    #             #     f.write(json.dumps(new_dict))
+    #             #     f.write('\n')
+    #             # with open(api_path, 'a') as f:
+    #             #     f.write(func + '\n')
+    # file_api_list = list(set(file_api_list))
+    # for api in file_api_list:
+    #     with open(api_path, 'a') as f:
+    #         f.write(api + '\n')
         

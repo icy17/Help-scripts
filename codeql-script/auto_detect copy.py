@@ -91,17 +91,11 @@ def if_big(database_path):
 # ql_code: orig parameter-value-check.ql
 # target_api: api used
 # target_index: api parameter index.
-def gen_parameter_check_ql(ql_code, target_api, target_index, check_list):
-    check_str = 'fc.getTarget().hasName("' + target_api + '")'
-    for item in check_list:
-        if not item == target_api:
-            check_str = check_str + '\nor fc.getTarget().hasName("' + item + '")'
-    
+def gen_parameter_check_ql(ql_code, target_api, target_index):
     target_api_str = 'fc.getTarget().hasName("' + target_api + '")'
     target_index_str = 'result = fc.getArgument(' + str(target_index) + ')'
-    ql_code = ql_code.replace('fc.getTarget().hasName("Target_API")', target_api_str)
-    ql_code = ql_code.replace('result = fc.getArgument(Target_Index)', target_index_str)
-    ql_code = ql_code.replace('fc.getTarget().hasName("NEED CHECK API")', check_str)
+    ql_code = ql_code.replace('fc.getTarget().hasName("SSL_CTX_set_options")', target_api_str)
+    ql_code = ql_code.replace('result = fc.getArgument(0) ', target_index_str)
     return ql_code
 
 def gen_missing_free_ql(ql_code, target_api, target_index, free_list):
@@ -147,49 +141,43 @@ def gen_double_free_ql(ql_code, target_api, target_index, malloc_dict_list):
     ql_code = ql_code.replace('malloc_with_parameter', 'malloc')
     return ql_code
 
-def gen_uaf_ql(ql_code, target_api, target_index):
+def gen_uaf_ql(ql_code, target_api, target_index, malloc_dict_list, free_list):
     ql_code = ql_code.replace('Target_API', target_api)
     ql_code = ql_code.replace('Target_INDEX', str(target_index))
-    # malloc_str = '(fc.getTarget().hasName("malloc_parameter") and e = fc)'
-    # malloc_str2 = 'fc.getTarget().hasName("malloc")'
-    # for malloc_item in malloc_dict_list:
-    #     malloc_api = malloc_item['api']
-    #     malloc_index = malloc_item['index']
+    malloc_str = '(fc.getTarget().hasName("malloc_parameter") and e = fc)'
+    malloc_str2 = 'fc.getTarget().hasName("malloc")'
+    for malloc_item in malloc_dict_list:
+        malloc_api = malloc_item['api']
+        malloc_index = malloc_item['index']
         
-    #     malloc_str = malloc_str + '\n or (fc.getTarget().hasName("' + malloc_api + '") and e = fc.getArgument(' + str(malloc_index) + '))'
-    #     malloc_str2 = malloc_str2 + '\n or fc.getTarget().hasName("' + malloc_api + '")'
-    # ql_code = ql_code.replace('(fc.getTarget().hasName("malloc_parameter") and e = fc)', malloc_str)
-    # ql_code = ql_code.replace('fc.getTarget().hasName("malloc")', malloc_str2)
-    # ql_code = ql_code.replace('malloc_parameter', 'malloc')
+        malloc_str = malloc_str + '\n or (fc.getTarget().hasName("' + malloc_api + '") and e = fc.getArgument(' + str(malloc_index) + '))'
+        malloc_str2 = malloc_str2 + '\n or fc.getTarget().hasName("' + malloc_api + '")'
+    ql_code = ql_code.replace('(fc.getTarget().hasName("malloc_parameter") and e = fc)', malloc_str)
+    ql_code = ql_code.replace('fc.getTarget().hasName("malloc")', malloc_str2)
+    ql_code = ql_code.replace('malloc_parameter', 'malloc')
     
-    # free_str = 'fc.getTarget().hasName("free")'
-    # for free_api in free_list:
-    #     free_api = free_api['api']
-    #     free_str = free_str + '\n or fc.getTarget().hasName("' + free_api + '")'
-    # ql_code = ql_code.replace('fc.getTarget().hasName("free")', free_str)
+    free_str = 'fc.getTarget().hasName("free")'
+    for free_api in free_list:
+        free_api = free_api['api']
+        free_str = free_str + '\n or fc.getTarget().hasName("' + free_api + '")'
+    ql_code = ql_code.replace('fc.getTarget().hasName("free")', free_str)
     return ql_code
 
 
-def gen_uninitialize_ql(ql_code, target_api, target_index):
+def gen_uninitialize_ql(ql_code, target_api, target_index, initialize_dict_list):
 
     ql_code = ql_code.replace('Target_API', target_api)
     ql_code = ql_code.replace('Target_INDEX', str(target_index))
-    # malloc_str = '(fc.getTarget().hasName("initialize_expr") and e = fc.getAnArgument())'
-    # malloc_str2 = 'fc.getTarget().hasName("initialize")'
-    # for malloc_item in initialize_dict_list:
-    #     malloc_api = malloc_item['api']
-    #     # malloc_index = malloc_item['index']
+    malloc_str = '(fc.getTarget().hasName("initialize_expr") and e = fc.getAnArgument())'
+    malloc_str2 = 'fc.getTarget().hasName("initialize")'
+    for malloc_item in initialize_dict_list:
+        malloc_api = malloc_item['api']
+        # malloc_index = malloc_item['index']
         
-    #     # malloc_str = malloc_str + '\n or (fc.getTarget().hasName("' + malloc_api + '") and e = e = fc.getAnArgument())'
-    #     malloc_str2 = malloc_str2 + '\n or fc.getTarget().hasName("' + malloc_api + '")'
-    # ql_code = ql_code.replace('(fc.getTarget().hasName("initialize_expr") and e = fc.getArgument(0))', malloc_str)
-    # ql_code = ql_code.replace('fc.getTarget().hasName("initialize")', malloc_str2)
-    return ql_code
-
-def gen_relation(ql_code, target_api, target_index, influence_index):
-    ql_code = ql_code.replace('Target_API', target_api)
-    ql_code = ql_code.replace('Target_INDEX', str(target_index))
-    ql_code = ql_code.replace('Influence_INDEX', str(influence_index))
+        malloc_str = malloc_str + '\n or (fc.getTarget().hasName("' + malloc_api + '") and e = e = fc.getAnArgument())'
+        malloc_str2 = malloc_str2 + '\n or fc.getTarget().hasName("' + malloc_api + '")'
+    ql_code = ql_code.replace('(fc.getTarget().hasName("initialize_expr") and e = fc.getArgument(0))', malloc_str)
+    ql_code = ql_code.replace('fc.getTarget().hasName("initialize")', malloc_str2)
     return ql_code
 
 def sort_by_size(database_list, database_dir):
@@ -221,70 +209,29 @@ def sort_by_size(database_list, database_dir):
     # exit(1)
     return out_list
 
-def gen_check_before(ql_template, target_api, target_index, before_api):
-    ql_code = ql_template.replace('Target_FC', target_api)
-    ql_code = ql_code.replace('Target_INDEX', str(0))
-    ql_code = ql_code.replace('Target_Before', before_api)
-    
-    return ql_code
-
-def gen_dangle(free_list, ql_template, target_api, target_index):
-    ql_code = ql_template.replace('Target_Free', target_api)
-    ql_code = ql_code.replace('Target_INDEX', str(target_index))
-    free_str = 'fc.getTarget().hasName("free")'
-    for free_api in free_list:
-        free_api = free_api['api']
-        free_str = free_str + '\nor fc.getTarget().hasName("' + free_api + '")'
-    # malloc_str = '(fc.getTarget().hasName("malloc_with_parameter") and e = fc)'
-    # malloc_str2 = 'fc.getTarget().hasName("malloc")'
-    # for malloc_item in malloc_dict_list:
-    #     malloc_api = malloc_item['api']
-    #     malloc_index = malloc_item['index']
-        
-    #     malloc_str = malloc_str + '\n or (fc.getTarget().hasName("' + malloc_api + '") and e = fc.getArgument(' + str(malloc_index) + '))'
-    #     malloc_str2 = malloc_str2 + '\n or fc.getTarget().hasName("' + malloc_api + '")'
-    # ql_code = ql_code.replace('(fc.getTarget().hasName("malloc_with_parameter") and e = fc)', malloc_str)
-    # ql_code = ql_code.replace('fc.getTarget().hasName("malloc")', malloc_str2)
-    ql_code = ql_code.replace('fc.getTarget().hasName("Free_API")', free_str)
-    return ql_code
-
-def gen_ql_code(rule_dict, free_dict, ql_dict, api, lib,check_list):
-    if 'rule' not in rule_dict.keys() or 'index' not in rule_dict.keys():
-        return ''
+def gen_ql_code(rule_dict, free_dict, malloc_dict, init_dict, ql_dict, api, lib):
     rule = rule_dict['rule']
     index = rule_dict['index']
     # if rule != 'malloc-missing-free' and rule != 'free-missing-malloc':
     #     return ''
     
     if rule == 'parameter-check':
-        ql_code = gen_parameter_check_ql(ql_dict['parameter-check'], api, index, check_list)
+        ql_code = gen_parameter_check_ql(ql_dict['parameter-check'], api, index)
     elif rule == 'malloc-missing-free':
         ql_code = gen_missing_free_ql(ql_dict['malloc-missing-free'], api, index, free_dict[lib])
         # ql_code = ''
         # # TODO gt 不检测这两种
-    # elif rule == 'free-missing-malloc':
+    elif rule == 'free-missing-malloc':
         
-    #     ql_code = gen_missing_malloc_ql(ql_dict['free-missing-malloc'], api, index, malloc_dict[lib])
+        ql_code = gen_missing_malloc_ql(ql_dict['free-missing-malloc'], api, index, malloc_dict[lib])
         # ql_code = ''
         # # TODO gt 不检测这两种
     elif rule == 'uninitialize':
-        ql_code = gen_uninitialize_ql(ql_dict['uninitialize'], api, index)
+        ql_code = gen_uninitialize_ql(ql_dict['uninitialize'], api, index, init_dict[lib])
     elif rule == 'uaf':
-        ql_code = gen_uaf_ql(ql_dict['uaf'], api, index)
-    # elif rule == 'double-free':
-    #     ql_code = gen_double_free_ql(ql_dict['double-free'], api, index, malloc_dict[lib])
-    # elif rule == 'before-API':
-    #     target_index = index['target']
-    #     new_dict = dict()
-    #     new_dict['api'] = index['before-api']
-    #     ql_code = gen_uninitialize_ql(ql_dict['uninitialize'], api, target_index, [new_dict])
-    # elif rule == 'relation':
-    #     ql_code = gen_relation(ql_dict['relation'], api, index['target'], index['influence'])
-    elif rule == 'dangle-use':
-        ql_code = gen_dangle(free_dict[lib], ql_dict['dangle-use'], api, index)
-    # elif rule == 'check_before':
-        
-    #     ql_code = gen_check_before(ql_dict['check_before'], api, index, rule_dict['index'])
+        ql_code = gen_uaf_ql(ql_dict['uaf'], api, index, malloc_dict[lib], free_dict[lib])
+    elif rule == 'double-free':
+        ql_code = gen_double_free_ql(ql_dict['double-free'], api, index, malloc_dict[lib])
     else:
         ql_code = ''
     return ql_code
@@ -319,17 +266,15 @@ if __name__ == '__main__':
     # in_list = 'list'
     # codeql_dir = sys.argv[1] + '/'
     out_dir = sys.argv[2] + '/'
-    cmd_path = out_dir + 'cmd'
-    
     in_dir = sys.argv[1]
     
     database_dir = sys.argv[3] + '/'
     
-    in_path = in_dir + '/searchres-2'
+    in_path = in_dir + '/searchres'
     # [{api, index, lib}]
     free_path = in_dir + 'free_API'
     # [api, index, lib]
-    # malloc_path = in_dir + '/malloc_API'
+    malloc_path = in_dir + '/malloc_API'
     # [api, index, lib]
     initialize_path = in_dir + '/initialize_API'
     # [api, rule_list({'parameter-check': 1}), lib]
@@ -338,12 +283,9 @@ if __name__ == '__main__':
     ql_template_dir = in_dir + '/ql_template'
     parameter_check_ql = ql_template_dir + '/parameter-value-check.ql'
     malloc_missing_free_ql = ql_template_dir + '/malloc-missing-free.ql'
-    # free_missing_malloc_ql = ql_template_dir + '/free-missing-malloc.ql'
-    dangle_use_ql = ql_template_dir + '/dangle-use.ql'
-    # check_before_ql = ql_template_dir + '/check_before.ql'
+    free_missing_malloc_ql = ql_template_dir + '/free-missing-malloc.ql'
     uninitialize_ql = ql_template_dir + '/uninitialize.ql'
-    # double_free_ql = ql_template_dir + '/double-free.ql'
-    # relation_ql = ql_template_dir + '/relation.ql'
+    double_free_ql = ql_template_dir + '/double-free.ql'
     uaf_ql = ql_template_dir + '/use-after-free.ql'
     ql_dir = '/root/CodeQL/vscode-codeql-starter/codeql-custom-queries-cpp/'
     log_path = out_dir + '/detect_log'
@@ -353,37 +295,30 @@ if __name__ == '__main__':
     ql_dict = dict()
     ql_dict['malloc-missing-free'] = get_file_content(malloc_missing_free_ql)
     ql_dict['parameter-check'] = get_file_content(parameter_check_ql)
-    # ql_dict['free-missing-malloc'] = get_file_content(free_missing_malloc_ql)
+    ql_dict['free-missing-malloc'] = get_file_content(free_missing_malloc_ql)
     ql_dict['uninitialize'] = get_file_content(uninitialize_ql)
     ql_dict['uaf'] = get_file_content(uaf_ql)
-    # ql_dict['double-free'] = get_file_content(double_free_ql)
-    # ql_dict['relation'] = get_file_content(relation_ql)
-    # ql_dict['check_before'] = get_file_content(check_before_ql)
-    ql_dict['dangle-use'] = get_file_content(dangle_use_ql)
+    ql_dict['double-free'] = get_file_content(double_free_ql)
+    
     free_list = get_data_json(free_path)
-    # malloc_list = get_data_json(malloc_path)
-    # init_list = get_data_json(initialize_path)
+    malloc_list = get_data_json(malloc_path)
+    init_list = get_data_json(initialize_path)
     api_rule_list = get_data_json(api_rule_path)
-    check_list = list()
-    check_dict = dict()
-
     
-    
-    target_libs = ['openssl', 'libxml2', 'libcurl', 'libzip', 'sqlite3', 'libevent', 'zlib', 'libpcap', "mbedtls"]
+    target_libs = ['openssl', 'libpcap', 'sqlite3', 'libxml2']
     # api_rule_dict['lib']['api']是rule_list
     api_rule_dict = dict()
     # malloc_dict['lib']是api dict list
-    # malloc_dict = dict()
+    malloc_dict = dict()
     free_dict = dict()
-    # init_dict = dict()
+    init_dict = dict()
     
     all_dict = dict()
     
     for lib in target_libs:
-        # malloc_dict[lib] = list()
+        malloc_dict[lib] = list()
         free_dict[lib] = list()
-        check_dict[lib] = list()
-        # init_dict[lib] = list()
+        init_dict[lib] = list()
         api_rule_dict[lib] = dict()
     
     for item in api_rule_list:
@@ -396,26 +331,19 @@ if __name__ == '__main__':
             api_rule_dict[lib][api] = rule_list
         else:
             api_rule_dict[lib][api] = rule_list
-    for item in api_rule_list:
-        rule_list = item['rule_list']
+    for item in malloc_list:
         lib = item['lib']
-        for rule in rule_list:
-            if 'rule' in rule.keys() and rule['rule'] == 'parameter-check':
-                if item['api'] not in check_dict[lib]:
-                    check_dict[lib].append(item['api'])
-    # for item in malloc_list:
-    #     lib = item['lib']
-    #     api = item['api']
-    #     index = item['index']
-    #     in_dict = dict()
-    #     in_dict['api'] = api
-    #     in_dict['index'] = index
-    #     if lib not in malloc_dict.keys():
-    #         malloc_dict[lib] = list()
+        api = item['api']
+        index = item['index']
+        in_dict = dict()
+        in_dict['api'] = api
+        in_dict['index'] = index
+        if lib not in malloc_dict.keys():
+            malloc_dict[lib] = list()
             
-    #         malloc_dict[lib].append(in_dict)
-    #     else:
-    #         malloc_dict[lib].append(in_dict)
+            malloc_dict[lib].append(in_dict)
+        else:
+            malloc_dict[lib].append(in_dict)
     
     for item in free_list:
         lib = item['lib']
@@ -431,27 +359,25 @@ if __name__ == '__main__':
         else:
             free_dict[lib].append(in_dict)
             
-    # for item in init_list:
-    #     lib = item['lib']
-    #     api = item['api']
-    #     # index = item['index']
-    #     in_dict = dict()
-    #     in_dict['api'] = api
-    #     # in_dict['index'] = index
-    #     if lib not in init_dict.keys():
-    #         init_dict[lib] = list()
+    for item in init_list:
+        lib = item['lib']
+        api = item['api']
+        # index = item['index']
+        in_dict = dict()
+        in_dict['api'] = api
+        # in_dict['index'] = index
+        if lib not in init_dict.keys():
+            init_dict[lib] = list()
             
-    #         init_dict[lib].append(in_dict)
-    #     else:
-    #         init_dict[lib].append(in_dict)
+            init_dict[lib].append(in_dict)
+        else:
+            init_dict[lib].append(in_dict)
     print(free_dict)
-    # print(malloc_dict)
-    # print(init_dict)
+    print(malloc_dict)
+    print(init_dict)
     print(api_rule_dict)
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
-    with open(cmd_path, 'a') as f:
-        f.write(str(sys.argv) + '\n')
     # in_path = in_list
     # codeql database analyze ./database/libspatialite-5fb62fc-small --rerun --format=csv --output=./output/libspatialite-5fb62fc-small.csv --ram=2048 ./vscode-codeql-starter/codeql-custom-queries-cpp/search_api.ql
     data = get_data_json(in_path)
@@ -509,8 +435,6 @@ if __name__ == '__main__':
         # if api != 'NCONF_free':
         #     continue
         lib = database['lib']
-        if lib not in target_libs:
-            continue
         if lib not in api_rule_dict.keys():
             out_dict = dict()
             out_dict = database
@@ -530,12 +454,10 @@ if __name__ == '__main__':
                 f.write('\n')
             continue
         rules = api_rule_dict[lib][api]
-
-        
         for rule in rules:
             i += 1
             print(f'{str(i)}/{str(all_nums)}')
-            ql_code = gen_ql_code(rule, free_dict, ql_dict, api, lib, check_dict[lib])
+            ql_code = gen_ql_code(rule, free_dict, malloc_dict, init_dict, ql_dict, api, lib)
             if ql_code == '':
                 out_dict = dict()
                 out_dict = database
@@ -559,41 +481,22 @@ if __name__ == '__main__':
         # ql_name = database['bigflag'] + database['API1'] + '-' + database['API2'] + '.ql'
         # ql_path = ql_dir + '/' + ql_names
         # if not big_flag:
-            if rule['rule'] != 'relation' and rule['rule'] != 'before-API':
-                out_csv_path = out_dir +  database_name + '-' + database['api'] + '-' + rule['rule'] + str(rule['index']) + '.csv '
-            else:
-                # print(rule)
-                out_csv_path = out_dir +  database_name + '-' + database['api'] + '-' + rule['rule'] + str(rule['index']['target']) + '.csv '
+            out_csv_path = out_dir +  '/' + database_name + '-' + database['api'] + '-' + rule['rule'] + str(rule['index']) + '.csv '
         # else:
         #     out_csv_path = out_dir + 'big_' + database_name + '-' + database['malloc_api'] + '-' + database['free_api'] + '.csv '
-            # print(list(out_csv_path))
-            if os.path.exists(os.path.abspath(out_csv_path.strip(' '))):
-                with open(log_path, 'a') as f:
-                    f.write(get_time() + ' File: ' + out_csv_path + ' exists!\n')
-                print('exists')
-                continue
+
+        
         # codeql_analyze = 'codeql database analyze ' + database_path + ' --rerun --format=csv --output=' + out_dir + database['bigflag'] + database_name + database['API1'] +'.csv --ram=2048 --threads=2 ' + ql_path
-            lock_path = database_path+ '/db-cpp/default/cache/.lock'
-            print(lock_path)
-            # exit(1)
-            if os.path.exists(lock_path):
-                print('rm lock')
-                os.system('rm ' + lock_path)
             codeql_analyze = 'codeql database analyze ' + database_path + ' --rerun --threads=4 --format=csv --output=' + out_csv_path + ql_path
             with open(log_path, 'a') as f:
                 f.write(get_time() + 'Execute codeql analyze:\n' + codeql_analyze + '\n')
             start = time.time()
             database_log = database_path + '/log/'
             os.system('rm -rf ' + database_log)
-            
             # change to subprocess set timeout TODO
             return_info = subprocess.Popen(codeql_analyze, shell=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             try:
-                out, err = return_info.communicate(timeout=1800)
-                # out, err = return_info.communicate()
-                print('Sleep ....')
-                time.sleep(10)
-                print('Continue!')
+                out, err = return_info.communicate()
             except:
                 out_dict = dict()
                 out_dict = database
@@ -609,7 +512,6 @@ if __name__ == '__main__':
             info = out.decode("utf-8","ignore") + '\n' + err.decode("utf-8","ignore")
             print(info)
             end = time.time()
-            # exit(1)
             if return_info.returncode != 0:
                 # exit(1)
                 out_dict = dict()

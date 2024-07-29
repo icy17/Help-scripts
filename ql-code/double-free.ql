@@ -1,10 +1,10 @@
 /**
- * @name doublefree
+ * @name UAF
  * @description description
  * @kind problem
  * @problem.severity error
  * @precision high
- * @id cpp/doublefree
+ * @id cpp/UAF
  * @tags security
  */
 
@@ -14,105 +14,143 @@
  import semmle.code.cpp.security.Security
  import semmle.code.cpp.controlflow.Guards
  import semmle.code.cpp.valuenumbering.GlobalValueNumbering
- 
-Expr getMallocExpr(FunctionCall fc)
-{
-    exists(Expr e | 
-        result = e
-        and
-        (
-            (fc.getTarget().hasName("malloc_with_parameter") and e = fc)
-        // TODO-addMallocHere
-        )
-    )
-}
+
 
 Expr getFreeExpr(FunctionCall fc)
 {
 
-        result = fc.getArgument(Target_INDEX)
+        result = fc.getArgument(0)
         and
         (
-            fc.getTarget().hasName("Target_Free")
-        // or
-        //  fc.getTarget().hasName("target")
-        // TODO-addFreeHere
+            // TODO-Target-change
+            fc.getTarget().hasName("Free_API")
         )
 }
- predicate isSourceFC(FunctionCall fc)
- {
 
- fc.getTarget().hasName("malloc")
+ predicate isFreeFC(FunctionCall fc)
+ {
+    fc.getTarget().hasName("Free_API")
  }
 
- predicate isSinkFC(FunctionCall fc)
+ Expr getTargetExpr(FunctionCall fc)
+ {
+    result = fc.getArgument(Target_INDEX)
+        and
+        (
+            // TODO-Target-change
+            fc.getTarget().hasName("Target_Free")
+        // or
+        //  fc.getTarget().hasName("new_free")
+        
+        )
+ }
+ predicate isTargetFC(FunctionCall fc)
  {
  fc.getTarget().hasName("Target_Free")
-//  or
-//  fc.getTarget().hasName("target")
  }
- DataFlow::Node getSinkNode(FunctionCall fc)
- {
-     result.asExpr() = getFreeExpr(fc)
-     or
-     result.asDefiningArgument() = getFreeExpr(fc)
- }
-    
- DataFlow::Node getSourceNode(FunctionCall fc)
- {
-     result.asExpr() = getMallocExpr(fc)
-     or
-     result.asDefiningArgument() = getMallocExpr(fc)
- }
- class MallocConfiguration extends DataFlow::Configuration {
-    MallocConfiguration() { this = "MallocConfiguration" }
-   
-     override predicate isSource(DataFlow::Node source) {
-       exists(FunctionCall fc | 
-        isSourceFC(fc)
-        and
-        source = getSourceNode(fc)
-         )
-     }
-     override predicate isSink(DataFlow::Node sink) {
-       // sink.asExpr()
-       exists(FunctionCall fc |
-         isSinkFC(fc)
-         and sink = getSinkNode(fc)
-       )
-     }
-   }
 
- predicate isLocalVariable(Expr e) {
-     exists(LocalVariable lv | 
-        exists(FunctionCall fc| 
-            fc = e and
-            exists(AssignExpr ae | 
-            ae.getAChild() = fc and lv.getAnAccess() = ae.getLValue())
+//  class MallocConfiguration extends DataFlow::Configuration {
+//     MallocConfiguration() { this = "MallocConfiguration" }
+   
+//     override predicate isSource(DataFlow::Node source) {
+//         exists(FunctionCall fc | 
+//             source.asExpr() = fc
+            
+//         )
+//         or exists(FunctionCall fc, AddressOfExpr ae | 
+//             source.asDefiningArgument() = ae
+//             and ae = fc.getAnArgument()
+//             )
+//       }
+//      override predicate isSink(DataFlow::Node sink) {
+//        // sink.asExpr()
+//        exists(Expr e |
+//          sink.asExpr() = e
+//          or sink.asDefiningArgument() = e
+//        )
+//      }
+//    }
+
+
+   class FreeConfiguration extends DataFlow::Configuration {
+    FreeConfiguration() { this = "FreeConfiguration" }
+   
+    override predicate isSource(DataFlow::Node source) {
+        exists(FunctionCall fc | 
+            (source.asDefiningArgument() = getFreeExpr(fc) or source.asExpr() = getFreeExpr(fc))
+            and isFreeFC(fc)
         )
-            or
-            lv.getAnAccess() = e
+      }
+     override predicate isSink(DataFlow::Node sink) {
+        exists(FunctionCall fc | 
+            (sink.asDefiningArgument() = getTargetExpr(fc) or sink.asExpr() = getTargetExpr(fc))
+            and isTargetFC(fc)
+        )
+     }
+     override predicate isBarrier(DataFlow::Node barrier) {
+        exists(Assignment assign |
+          barrier.asExpr() = assign.getLValue()
+        )
+        or
+        exists(AddressOfExpr ae, FunctionCall fc| 
+            barrier.asDefiningArgument() = ae
+            and fc.getAnArgument() = ae
             )
- }
- 
- from FunctionCall target
- where
-isSinkFC(target)
-and exists(FunctionCall free | 
-    isSinkFC(free)
-   and free.getASuccessor*() = target
-   and not free = target
-    
-//  and 
-// isLocalVariable(getMallocExpr(target))
- and not 
- exists(MallocConfiguration cfg, FunctionCall malloc| 
-    isSourceFC(malloc)
-    and free.getASuccessor*() = malloc
-    and malloc.getASuccessor*() = target
+   }
+}
+
+  FunctionCall hasFlowtoAPI(FunctionCall fc) {
+    isTargetFC(fc)
+    and isFreeFC(result)
     and
-    cfg.hasFlow(getSourceNode(malloc), getSinkNode(target))
+    exists(FreeConfiguration p| 
+        not fc = result
+        and
+        p.hasFlow(DataFlow::exprNode(getFreeExpr(result)), DataFlow::exprNode(getTargetExpr(fc)))
+        )
+}
+
+//702-major-revision
+//  target is a free function
+from FunctionCall target, FunctionCall free
+where
+isFreeFC(target)
+// and exists(FunctionCall malloc | isSourceFC(malloc) and target.getAPredecessor*() = malloc)
+and free = hasFlowtoAPI(target)
+and not exists(PointerFieldAccess fa | 
+    getFreeExpr(target).getAChild*() = fa)
+// Control Flow filter::
+and 
+(
+    (free.getASuccessor+() = target
+     and not exists(Assignment assign |
+        (target.getASuccessor+() = assign and assign.getASuccessor+() = free)
+      )
     )
+    // or
+    // (exists(FunctionCall fc | free.getEnclosingFunction() = fc.getTarget()
+    // and fc.getASuccessor+() = target)
+    
+    // )
+    // or
+    // (
+    //     exists(FunctionCall fc | target.getEnclosingFunction() = fc.getTarget()
+    // and free.getASuccessor+() = fc
+    // // and not exists(Assignment assign |
+    // //     (fc.getASuccessor+() = assign and assign.getASuccessor+() = use)
+    // //     or target.getASuccessor+() = assign
+    // //   )
+    //     )
+    // )
+    // or
+    // (
+    //     exists(FunctionCall fc1, FunctionCall fc2 | 
+    //         target.getEnclosingFunction() = fc1.getTarget()
+    //         and free.getEnclosingFunction() = fc2.getTarget()
+    //         and fc2.getASuccessor+() = fc1
+    //         )
+    // )
 )
- select target, target.getLocation().toString()
- 
+
+
+select target, "Freed in " + free.getLocation().toString() + ". Dangle used in " + target.getLocation().toString()

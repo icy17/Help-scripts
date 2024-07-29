@@ -136,7 +136,7 @@ if __name__ == '__main__':
     output_path = out_dir + '/findres'
     filter_list = []
     api_path = api_dir + '/'
-    libs = ['openssl', 'libpcap', 'libxml2', 'sqlite3']
+    libs = ['libapr', 'mbedtls']
     # libs = ['libpcap']
     # libs = ['ffmpeg', 'ldap', 'libpcap','libexpat','libmysql','libgnutls', 'libevent', 'zlib','libzip', 'libdbus']
     # if not os.path.exists(output_dir):

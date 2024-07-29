@@ -25,6 +25,7 @@ if __name__ == '__main__':
     with open(file_path, 'r') as f:
         code = f.read() 
     find_list = get_declarator(code)
+    find_list = list(set(find_list))
     for api in find_list:
         with open(out_path, 'a') as f:
             f.write(api + '\n')

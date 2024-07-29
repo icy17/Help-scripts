@@ -9,8 +9,8 @@
     combine_csv.py
 ## apisan/: 用于自动化使用APISAN检查多个软件
     auto_apisan.py
-## IPPO/: 用于自动化收集编译好的软件中的bc文件并生成bc_list然后打包
-    parse_bc.py
+## LLVM-help/: 用于自动化完成LLVM分析中的某些步骤
+    parse_bc.py: 收集编译好的软件中的bc文件并生成bc_list然后打包
 ## ql-code/: CodeQL使用的检测代码，这里有一些对特定类型问题的检测ql
 ## ql-testcase/: 为了debug ql代码用的一些C语言简单的示例代码
 ## patch-parse/: 处理软件的patch信息的代码

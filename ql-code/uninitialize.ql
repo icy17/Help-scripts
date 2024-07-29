@@ -16,145 +16,75 @@
  import semmle.code.cpp.valuenumbering.GlobalValueNumbering
  
 
- Expr getMallocExpr(FunctionCall fc)
- {
-     exists(Expr e | 
-         result = e
-         and
-         (
-             (fc.getTarget().hasName("initialize_expr") and e = fc.getAnArgument())
-        //  or
-        //  (fc.getTarget().hasName("test_init") and e = fc.getArgument(0))
-         // TODO-addMallocHere
-         )
-     )
- }
-
- predicate isSourceFC(FunctionCall fc)
- {
- fc.getTarget().hasName("initialize")
-//  or 
-//  fc.getTarget().hasName("strlen")
- }
-
- DataFlow::Node getSourceNode(FunctionCall fc)
- {
-     result.asExpr() = getMallocExpr(fc)
-     or
-     result.asDefiningArgument() = getMallocExpr(fc)
- }
-
- Expr getSinkExpr(FunctionCall fc)
- {
-    isSinkFC(fc)
-    and
- result = fc.getArgument(Target_INDEX) 
- }
- 
- predicate isSinkFC(FunctionCall fc)
+ predicate isTargetFC(FunctionCall fc)
  {
  fc.getTarget().hasName("Target_API")
  }
- DataFlow::Node getSinkNode(FunctionCall fc)
+
+//  DataFlow::Node getSourceNode(FunctionCall fc)
+//  {
+//      result.asExpr() = getMallocExpr(fc)
+//      or
+//      result.asDefiningArgument() = getMallocExpr(fc)
+//  }
+
+ Expr getTargetExpr(FunctionCall fc)
  {
-     result.asExpr() = getSinkExpr(fc)
-     or
-     result.asDefiningArgument() = getSinkExpr(fc)
+    isTargetFC(fc)
+    and
+ result = fc.getArgument(Target_INDEX) 
  }
-    
- class ParameterConfiguration extends DataFlow::Configuration {
-     ParameterConfiguration() { this = "ParameterConfiguration" }
+
+
+//  class PathConfiguration extends DataFlow::Configuration {
+//     PathConfiguration() { this = "PathConfiguration" }
    
-     override predicate isSource(DataFlow::Node source) {
-       exists(Expr rt | 
-         rt = source.asExpr()
-         or rt = source.asDefiningArgument()
-         )
+//      override predicate isSource(DataFlow::Node source) {
+//        exists(FunctionCall fca, AddressOfExpr ae| 
+//             source.asExpr() = ae.getAChild+()
+//             and fca.getAnArgument() = ae
+//             )
+//      }
+//      override predicate isSink(DataFlow::Node sink) {
+//        // sink.asExpr()
+//        exists(FunctionCall fc |
+//         isTargetFC(fc)
+//         and
+//         sink.asExpr() = getTargetExpr(fc)
+//     )
+//      }
+//    }
 
-        or
-         exists(FunctionCall fc | 
-            
-            isSourceFC(fc)
-            and
-            source = getSourceNode(fc)
-            )
-        
-     }
-     override predicate isSink(DataFlow::Node sink) {
-       // sink.asExpr()
-       exists(FunctionCall fc |
-         isSinkFC(fc)
-         and sink = getSinkNode(fc)
-       )
-     }
-   }
-
-
-predicate isFlow(Expr source, Expr sink) {
-    exists(FunctionCall sourcefc, FunctionCall sinkfc | 
-        isSourceFC(sourcefc)
-        and isSinkFC(sinkfc)
-        and source = getMallocExpr(sourcefc)
-        and sink = getSinkExpr(sinkfc)
-        and exists(ParameterConfiguration cfg | 
-            cfg.hasFlow(getSourceNode(sourcefc), getSinkNode(sinkfc))
-            )
-        )
-    
-}
-   
-ControlFlowNode getTargetNode() {
-    exists(FunctionCall target | 
-        isSinkFC(target)
-    // target.getTarget().hasName("free")
-    and result = target
+//    DataFlow::Node hasFlowtoAPI(FunctionCall fc) {
+//     isTargetFC(fc)
+//     and
+//     exists(PathConfiguration p, DataFlow::Node source| 
+//         p.hasFlow(source, DataFlow::exprNode(getTargetExpr(fc)))
+//       and source.asExpr().getEnclosingFunction() = fc.getEnclosingFunction()
+//       and result = source
+//         )
+// }
+ predicate isAssignBefore(Expr e) {
+    exists(Variable v, Initializer i|
+        v.getAnAccess() = e
+        and v.getInitializer() = i
+  )
+  or
+  exists(Assignment a, Variable v| 
+    v.getAnAccess() = e
+    and v.getAnAccess() = a.getLValue()
     )
 }
 
-ControlFlowNode getBeforeNode(FunctionCall target) {
-    exists(FunctionCall sourcefc, ParameterConfiguration cfg| 
-        cfg.hasFlow(getSourceNode(sourcefc), getSinkNode(target))
-        and target.getAPredecessor*() = sourcefc
-        // and not e = target.getAnArgument()
-        and result = sourcefc)
+predicate isAddressAssign(Expr e) {
+  exists(FunctionCall fc, AddressOfExpr ae, Variable v| 
+    fc.getAnArgument() = ae
+    and fc.getASuccessor+() = e
+    and v.getAnAccess() = e
+    and v.getAnAccess() = ae.getAChild+()
+    )
+  
 }
-
-// return True说明该node是 conditional的，会leak
-predicate isConditionalBefore(ControlFlowNode node, ControlFlowNode target) {
-    target = getTargetNode()
-    and
-    node = getBeforeNode(target)
-    and not node.getBasicBlock() = target.getBasicBlock()
-    and
-    exists(BasicBlock bb | 
-        bb.getASuccessor().getANode() = node
-        and bb.getASuccessor().getANode() = target
-        
-        )
-}
-
-
-BasicBlock getLeakBBBefore(ControlFlowNode target) {
-    isSinkFC(target)
-    and
-    // result.getASuccessor*() = target
-    // and
-    not exists(ControlFlowNode node | 
-        node = getBeforeNode(target)
-        and (not
-        exists(BasicBlock bb | 
-            bb.getASuccessor*() = target
-            // and bb.getAPredecessor*() = node
-            and not bb.getANode() = node
-        and result = bb
-        and not bb.getAPredecessor*() = node.getBasicBlock()
-        and not bb.getASuccessor*() = node.getBasicBlock()
-        )
-        and not isConditionalBefore(node, target)
-        )
-        )
-}
-
  
  predicate isLocalVariable(Expr e) {
     exists(LocalVariable lv | 
@@ -169,21 +99,12 @@ BasicBlock getLeakBBBefore(ControlFlowNode target) {
 }
  
 
-//  predicate isConditional(BasicBlock bb) {
-//     exists(GuardCondition g | 
-//        g.controls(bb, _) 
-//        )
-    
-//  }
  
- 
- from FunctionCall target, BasicBlock bb
+ //0703-major
+ from FunctionCall target
  where
- target = getTargetNode()
- and
- isLocalVariable(getSinkExpr(target))
-//  and after.getTarget().hasName("free")
- // and not exists(Expr check| check=getCheckExpr(target))
- and bb = getLeakBBBefore(target)
+ isTargetFC(target)
+ and not isAssignBefore(getTargetExpr(target))
+ and not isAddressAssign(getTargetExpr(target))
  select target, target.getLocation().toString()
  
