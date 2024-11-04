@@ -16,6 +16,14 @@
 ## patch-parse/: 处理软件的patch信息的代码
     get_API.py
     parse_commit.py
+## split-funcs/: 处理库源码，将一个project的所有function全部拆分出来
+    combine_funcinfo.py（由于有的时候tree sitter和cflow能够覆盖的func不重叠，可以分别生成后再使用这个脚本总结一下，但是可以不用）
+    gen_callgraph.py（主要使用，生成call graph时 第二个调用这个）
+    get_callee.py(这个是clow，弃用了)
+    get_funcs-cflow.py(弃用了，现在主要使用tree-sitter)
+    get-graph-treesitter.py（主要使用，生成call graph时 先调用这个）
+    parse_callgraph.py （可能用于先筛选出调用嵌套少的，优先处理的func？）
+    test_treesitter.py（测试代码，应该用不到）
 ## 其他代码：不好分类但常用的
     auto_clone.py: 用于根据https_link_path自动化clone软件到out_dir，并自动checkout到指定commit
         Usage: python3 ./auto_clone.py <https_link_path> <out_dir>
